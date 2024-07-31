@@ -67,7 +67,7 @@ const calculateTimeSpent = (quantity: number) => {
 }
 
 function App() {
-  const [timesheets, setTimesheets] = useState<ITimesheet[]>([]);
+  // const [timesheets, setTimesheets] = useState<ITimesheet[]>([]);
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [taskSummaries, setTaskSummaries] = useState<ITaskSummary[]>([]);
 
@@ -90,7 +90,7 @@ function App() {
         timeSpent
       }
     });
-    setTimesheets(preprocessedData);
+    // setTimesheets(preprocessedData);
 
     // Get the records from `preprocessedData` which the `description` contains `[SG-<something>]`
     const filteredByTask = preprocessedData.filter((entry) => {
