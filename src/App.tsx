@@ -41,6 +41,12 @@ interface ITaskSummary {
   timeSpent: string;
 }
 
+interface IWorkSummary {
+  totalTasks: number;
+  totalEstimation: string;
+  totalTimeSpent: string;
+}
+
 const convertToUnix = (date: number) => {
   const DATE_26_JUL_24: number = 45499;
   const millisecond26jul24 = new Date(2022, 6, 26, 0, 0, 0).getTime();
@@ -70,6 +76,11 @@ function App() {
   // const [timesheets, setTimesheets] = useState<ITimesheet[]>([]);
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [taskSummaries, setTaskSummaries] = useState<ITaskSummary[]>([]);
+  const [workSummary, setWorkSummary] = useState<IWorkSummary>({
+    totalTasks: 0,
+    totalEstimation: "",
+    totalTimeSpent: "",
+  });
 
   const setData = (data: IRawTimesheet[]) => {
     const preprocessedData: ITimesheet[] = data.map((row) => {
@@ -165,6 +176,15 @@ function App() {
     }));
     setTaskSummaries(summaries);
 
+    const totalQuantity = summaries.reduce((acc, task) => acc + task.quantity, 0);
+
+    const workSummary: IWorkSummary = {
+      totalTasks: tasks.length,
+      totalEstimation: "", // TODO: calculate from jira story points
+      totalTimeSpent: calculateTimeSpent(totalQuantity),
+    };
+    setWorkSummary(workSummary);
+
     const parentIDs = new Set<string>();
     const taskIDs = new Set<string>();
     filteredByTask.forEach((task) => {
@@ -217,6 +237,28 @@ function App() {
         label="Upload Timesheet"
         setData={setData}
       />
+
+      <div className="mt-8">
+        <h3>Work Summary</h3>
+        <div className="w-fit border border-slate-200 rounded-sm">
+          <Table className="w-fit">
+            <TableBody>
+              <TableRow>
+                <TableHead className="text-center w-40">Total Tasks</TableHead>
+                <TableCell className="text-center">{workSummary.totalTasks}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableHead className="text-center w-40">Total Estimation</TableHead>
+                <TableCell className="text-center">{workSummary.totalEstimation}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableHead className="text-center w-40">Total Time Spent</TableHead>
+                <TableCell className="text-center">{workSummary.totalTimeSpent}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       {/* Task Summary Table */}
       <div className="mt-8">
