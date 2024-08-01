@@ -346,7 +346,7 @@ function App() {
     const ratio = (totalQuantity * 100 / totalEstimation).toFixed(2) + " %";
 
     const workSummary: IWorkSummary = {
-      totalTasks: tasks.length,
+      totalTasks: summaries.length,
       totalEstimation: formatTimeEstimation(totalEstimation),
       totalTimeSpent: calculateTimeSpent(totalQuantity),
       ratio
