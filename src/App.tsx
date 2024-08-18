@@ -264,6 +264,9 @@ function App() {
 
       // skip code review tasks
       if (entry.description.toLocaleLowerCase().includes("code review")) return false;
+
+      // skip assists
+      if (entry.description.toLocaleLowerCase().includes("assist")) return false;
       
       return true;
     });
