@@ -9,7 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import CheckboxItem from './components/ui/CheckboxItem';
+import CheckboxItem from './components/CheckboxItem';
+import { ITaskSummary } from './types';
+import TaskSummary from './components/task-summary';
 
 interface IRawTimesheet {
   Date: number; // e.g. 45499
@@ -36,15 +38,6 @@ interface ITask extends ITimesheet {
   taskID: string;
 }
 
-interface ITaskSummary {
-  taskID: string;
-  name: string;
-  status: EnumJiraStatus;
-  actualEstimation: number;
-  timeEstimation: string;
-  actualQuantity: number;
-  timeSpent: string;
-}
 
 interface IWorkSummary {
   totalTasks: number;
@@ -478,36 +471,7 @@ function App() {
       </details>
       
       {/* Task Summary Table */}
-      <details className="mt-8">
-        <summary className="text-left">Task Summary</summary>
-        <div>
-          <h3 className="text-lg font-medium mb-2">Task Summary</h3>
-          <div className="border border-slate-200 rounded-sm">
-            <Table className="w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center">Task ID</TableHead>
-                  <TableHead className="text-left">Name</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-center">Estimation</TableHead>
-                  <TableHead className="text-center">Actual</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {taskSummaries.map((summary, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="text-center">{summary.taskID}</TableCell>
-                    <TableCell className="text-left">{summary.name}</TableCell>
-                    <TableCell className="text-center">{summary.status}</TableCell>
-                    <TableCell className="text-center">{summary.timeEstimation}</TableCell>
-                    <TableCell className="text-center">{summary.timeSpent}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </details>
+      <TaskSummary data={taskSummaries} />
 
       {/* JIRA Task Table */}
       <details className="mt-8">
