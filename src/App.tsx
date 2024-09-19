@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css'
 import FileUpload from './components/ui/file-upload'
 import {
@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import CheckboxItem from './components/ui/CheckboxItem';
 
 interface IRawTimesheet {
   Date: number; // e.g. 45499
@@ -50,6 +51,14 @@ interface IWorkSummary {
   totalEstimation: string;
   totalTimeSpent: string;
   ratio: string;
+}
+
+interface IActivityFilters {
+  task: boolean;
+  codeReview: boolean;
+  assist: boolean;
+  deployment: boolean;
+  analysis: boolean;
 }
 
 enum EnumJiraIssueType {
@@ -171,6 +180,7 @@ function App() {
   const [jiraTasks, setJiraTasks] = useState<IJiraTask[]>([]);
   const [mapJiraTasks, setMapJiraTasks] = useState<Map<string, IJiraTask>>(new Map());
 
+  const [allTasks, setAllTasks] = useState<ITask[]>([]);
   const [tasks, setTasks] = useState<ITask[]>([]);
   const [taskSummaries, setTaskSummaries] = useState<ITaskSummary[]>([]);
   const [workSummary, setWorkSummary] = useState<IWorkSummary>({
@@ -179,6 +189,92 @@ function App() {
     totalTimeSpent: "",
     ratio: "",
   });
+
+  const [activityFilters, setActivityFilters] = useState<IActivityFilters>({
+    task: true,
+    codeReview: true,
+    assist: true,
+    deployment: true,
+    analysis: false,
+  });
+
+  useEffect(() => {
+    // Get the records from `preprocessedData` which the `description` contains `[SG-<something>]`
+    const filteredByTask = allTasks.filter((entry) => {
+      // skip code review tasks
+      if (!activityFilters.codeReview && entry.description.toLocaleLowerCase().includes("code review"))
+        return false;
+
+      // skip assists
+      if (!activityFilters.assist && entry.description.toLocaleLowerCase().includes("assist"))
+        return false;
+
+      // skip deployment
+      if (!activityFilters.deployment && entry.description.toLocaleLowerCase().includes("deploy"))
+        return false;
+
+      // skip PM tasks
+      if (!activityFilters.analysis && entry.description.toLocaleLowerCase().includes("pm"))
+        return false;
+
+      // skip ordinary task
+      if (!activityFilters.task) {
+        const isSkipped = !entry.description.toLocaleLowerCase().includes("code review")
+          && !entry.description.toLocaleLowerCase().includes("assist")
+          && !entry.description.toLocaleLowerCase().includes("deploy")
+          && !entry.description.toLocaleLowerCase().includes("pm");
+
+        if (isSkipped) return false;
+      }
+
+      return true;
+    });
+    setTasks(filteredByTask)
+
+    const quantityPerTaskID: Record<string, number> = filteredByTask.reduce((
+      acc: Record<string, number>,
+      task
+    ) => {
+      if (!acc[task.taskID]) {
+        acc[task.taskID] = 0;
+      }
+
+      acc[task.taskID] += task.quantity;
+      return acc;
+    }, {});
+
+    const summaries: ITaskSummary[] = Object.entries(quantityPerTaskID).map((
+      [taskID, actualQuantity]
+    ) => {
+      const jiraTask = mapJiraTasks.get(taskID);
+      const formattedTimeEstimation = jiraTask ? formatTimeEstimation(jiraTask.timeEstimation) : "";
+
+      return {
+        taskID,
+        name: jiraTask?.name || "",
+        status: jiraTask?.status || EnumJiraStatus.BACKLOG,
+        actualEstimation: jiraTask?.timeEstimation || 0,
+        timeEstimation: formattedTimeEstimation,
+        actualQuantity,
+        timeSpent: calculateTimeSpent(actualQuantity),
+      }
+    });
+    setTaskSummaries(summaries);
+
+    const totalQuantity = summaries.reduce((acc, task) => acc + task.actualQuantity, 0);
+    const totalEstimation = summaries.reduce((acc, task) => acc + task.actualEstimation, 0);
+
+    // percentage ratio = (totalEstimation / totalQuantity)
+    const ratio = (totalQuantity * 100 / totalEstimation).toFixed(2) + " %";
+
+    const workSummary: IWorkSummary = {
+      totalTasks: summaries.length,
+      totalEstimation: formatTimeEstimation(totalEstimation),
+      totalTimeSpent: calculateTimeSpent(totalQuantity),
+      ratio
+    };
+    setWorkSummary(workSummary);
+  }, [allTasks, activityFilters])
 
   const setJiraData = (data: IRawJira[]) => {
     const jiraTasks: IJiraTask[] = data.map((row) => {
@@ -255,28 +351,16 @@ function App() {
         timeSpent
       }
     });
-    // setTimesheets(preprocessedData);
 
-    // Get the records from `preprocessedData` which the `description` contains `[SG-<something>]`
-    const filteredByTask = preprocessedData.filter((entry) => {
-      // get only tasks registered in JIRA
-      if (!entry.description.includes("SG-")) return false;
-
-      // skip code review tasks
-      if (entry.description.toLocaleLowerCase().includes("code review")) return false;
-
-      // skip assists
-      if (entry.description.toLocaleLowerCase().includes("assist")) return false;
-      
-      return true;
-    });
-    console.table(filteredByTask);
-
+    console.log("preprocessedData:", preprocessedData);
     // populate rowData: ITask[]
-    const tasks: ITask[] = filteredByTask.reduce((
+    const tasks: ITask[] = preprocessedData.reduce((
       acc: ITask[],
       task: ITimesheet
     ) => {
+      // get only tasks registered in JIRA
+      if (!task.description.includes("SG-")) return acc;
+
       const parentID = task.description.split("]")[0].split("[")[1];
       const taskID = task.description.split("]")[1].split("[")[1];
       acc.push({
@@ -310,97 +394,12 @@ function App() {
       }
       return 0;
     });
-    setTasks(tasks);
-
-    const quantityPerTaskID: Record<string, number> = tasks.reduce((
-      acc: Record<string, number>,
-      task
-    ) => {
-      if (!acc[task.taskID]) {
-        acc[task.taskID] = 0;
-      }
-
-      acc[task.taskID] += task.quantity;
-      return acc;
-    }, {});
-
-    const summaries: ITaskSummary[] = Object.entries(quantityPerTaskID).map((
-      [taskID, actualQuantity]
-    ) => {
-      const jiraTask = mapJiraTasks.get(taskID);
-      const formattedTimeEstimation = jiraTask ? formatTimeEstimation(jiraTask.timeEstimation) : "";
-      
-      return {
-        taskID,
-        name: jiraTask?.name || "",
-        status: jiraTask?.status || EnumJiraStatus.BACKLOG,
-        actualEstimation: jiraTask?.timeEstimation || 0,
-        timeEstimation: formattedTimeEstimation,
-        actualQuantity,
-        timeSpent: calculateTimeSpent(actualQuantity),
-      }
-    });
-    setTaskSummaries(summaries);
-
-    const totalQuantity = summaries.reduce((acc, task) => acc + task.actualQuantity, 0);
-    const totalEstimation = summaries.reduce((acc, task) => acc + task.actualEstimation, 0);
-
-    // percentage ratio = (totalEstimation / totalQuantity)
-    const ratio = (totalQuantity * 100 / totalEstimation).toFixed(2) + " %";
-
-    const workSummary: IWorkSummary = {
-      totalTasks: summaries.length,
-      totalEstimation: formatTimeEstimation(totalEstimation),
-      totalTimeSpent: calculateTimeSpent(totalQuantity),
-      ratio
-    };
-    setWorkSummary(workSummary);
-
-    const parentIDs = new Set<string>();
-    const taskIDs = new Set<string>();
-    filteredByTask.forEach((task) => {
-      const parentID = task.description.split("]")[0].split("[")[1];
-      parentIDs.add(parentID);
-
-      const taskID = task.description.split("]")[1].split("[")[1];
-      taskIDs.add(taskID);
-    });
-
-    console.log("parentIDs:", parentIDs);
-    console.log("taskIDs:", taskIDs);
-
-    const groupedByProject = preprocessedData
-      .reduce((acc: Record<string, ITimesheet[]>, entry: ITimesheet) => {
-        if (!acc[entry.project]) {
-          acc[entry.project] = [];
-        }
-        acc[entry.project].push(entry);
-        return acc;
-      }, {});
-
-    const quantityByProject = Object.entries(groupedByProject)
-      .map(([project, entries]) => ({
-        project,
-        quantity: entries.reduce((acc, entry) => acc + entry.quantity, 0),
-      }));
-    console.table(quantityByProject);
-
-    const groupedByTask = preprocessedData
-      .reduce((acc: Record<string, ITimesheet[]>, entry: ITimesheet) => {
-        if (!acc[entry.task]) {
-          acc[entry.task] = [];
-        }
-        acc[entry.task].push(entry);
-        return acc;
-      }, {});
-
-    const quantityByTask = Object.entries(groupedByTask)
-      .map(([task, entries]) => ({
-        task,
-        quantity: entries.reduce((acc, entry) => acc + entry.quantity, 0),
-      }));
-    console.table(quantityByTask);
+    setAllTasks(tasks);
   }
+
+  const onActivityFilterChange = (key: keyof IActivityFilters, value: boolean) => {
+    setActivityFilters({ ...activityFilters, [key]: value });
+  };
 
   return (
     <main>
@@ -439,6 +438,45 @@ function App() {
         </div>
       </div>
 
+      {/* Filters */}
+      <details className="mt-8">
+        <summary className="text-left">Filters</summary>
+        <ol>
+          <li>
+            <CheckboxItem
+              id="task"
+              label="Task"
+              isChecked={activityFilters.task}
+              onChange={() => onActivityFilterChange("task", !activityFilters.task)}
+            />
+            <CheckboxItem
+              id="codeReview"
+              label="Code Review"
+              isChecked={activityFilters.codeReview}
+              onChange={() => onActivityFilterChange("codeReview", !activityFilters.codeReview)}
+            />
+            <CheckboxItem
+              id="assist"
+              label="Assist"
+              isChecked={activityFilters.assist}
+              onChange={() => onActivityFilterChange("assist", !activityFilters.assist)}
+            />
+            <CheckboxItem
+              id="deployment"
+              label="Deployment"
+              isChecked={activityFilters.deployment}
+              onChange={() => onActivityFilterChange("deployment", !activityFilters.deployment)}
+            />
+            <CheckboxItem
+              id="analysis"
+              label="Planning/Analysis"
+              isChecked={activityFilters.analysis}
+              onChange={() => onActivityFilterChange("analysis", !activityFilters.analysis)}
+            />
+          </li>
+        </ol>
+      </details>
+      
       {/* Task Summary Table */}
       <details className="mt-8">
         <summary className="text-left">Task Summary</summary>
