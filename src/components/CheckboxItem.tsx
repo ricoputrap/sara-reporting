@@ -15,7 +15,7 @@ const CheckboxItem: React.FC<Props> = ({ id, label, isChecked, onChange }) => {
       <Checkbox id={id} checked={isChecked} onCheckedChange={onChange} />
       <label
         htmlFor={id}
-        className="m-0 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+        className="cursor-pointer m-0 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
       >
         {label}
       </label>

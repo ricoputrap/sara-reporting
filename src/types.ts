@@ -17,3 +17,11 @@ export interface ITaskSummary {
   actualQuantity: number;   // e.g. 2.5
   timeSpent: string;        // e.g. "2h 30m"
 }
+
+export interface IActivityFilters {
+  task: boolean;
+  codeReview: boolean;
+  assist: boolean;
+  deployment: boolean;
+  analysis: boolean;
+}

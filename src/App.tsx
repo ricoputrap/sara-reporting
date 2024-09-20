@@ -10,8 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import CheckboxItem from './components/CheckboxItem';
-import { ITaskSummary } from './types';
+import { IActivityFilters, ITaskSummary } from './types';
 import TaskSummary from './components/task-summary';
+import Filters from './components/filters';
 
 interface IRawTimesheet {
   Date: number; // e.g. 45499
@@ -46,14 +47,6 @@ interface IWorkSummary {
   totalEstimation: string;
   totalTimeSpent: string;
   ratio: string;
-}
-
-interface IActivityFilters {
-  task: boolean;
-  codeReview: boolean;
-  assist: boolean;
-  deployment: boolean;
-  analysis: boolean;
 }
 
 enum EnumJiraIssueType {
@@ -397,10 +390,6 @@ function App() {
     setAllTasks(tasks);
   }
 
-  const onActivityFilterChange = (key: keyof IActivityFilters, value: boolean) => {
-    setActivityFilters({ ...activityFilters, [key]: value });
-  };
-
   return (
     <main>
       <FileUpload<IRawJira>
@@ -439,43 +428,12 @@ function App() {
       </div>
 
       {/* Filters */}
-      <details className="mt-8">
-        <summary className="text-left">Filters</summary>
-        <ol>
-          <li>
-            <CheckboxItem
-              id="task"
-              label="Task"
-              isChecked={activityFilters.task}
-              onChange={() => onActivityFilterChange("task", !activityFilters.task)}
-            />
-            <CheckboxItem
-              id="codeReview"
-              label="Code Review"
-              isChecked={activityFilters.codeReview}
-              onChange={() => onActivityFilterChange("codeReview", !activityFilters.codeReview)}
-            />
-            <CheckboxItem
-              id="assist"
-              label="Assist"
-              isChecked={activityFilters.assist}
-              onChange={() => onActivityFilterChange("assist", !activityFilters.assist)}
-            />
-            <CheckboxItem
-              id="deployment"
-              label="Deployment"
-              isChecked={activityFilters.deployment}
-              onChange={() => onActivityFilterChange("deployment", !activityFilters.deployment)}
-            />
-            <CheckboxItem
-              id="analysis"
-              label="Planning/Analysis"
-              isChecked={activityFilters.analysis}
-              onChange={() => onActivityFilterChange("analysis", !activityFilters.analysis)}
-            />
-          </li>
-        </ol>
-      </details>
+      <div className="mt-8">
+        <Filters
+          activityFilters={activityFilters}
+          setActivityFilters={setActivityFilters}
+        />
+      </div>
       
       {/* Task Summary Table */}
       <TaskSummary data={taskSummaries} />
