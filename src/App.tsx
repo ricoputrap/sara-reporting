@@ -20,6 +20,7 @@ interface IRawTimesheet {
   Project: string;
   Quantity: number;
   Task: string;
+  Employee: string;
 }
 
 interface ITimesheet {
@@ -31,6 +32,7 @@ interface ITimesheet {
   quantity: number;
   timeSpent: string; // e.g. 1h 30m
   task: string;
+  employee: string;
 }
 
 interface ITask extends ITimesheet {
@@ -251,7 +253,12 @@ function App() {
         actualQuantity,
         timeSpent: calculateTimeSpent(actualQuantity),
       }
-    });
+    }).sort((taskA, taskB) => {
+      if (taskA.taskID < taskB.taskID)
+        return 1;
+
+      return -1;
+    })
     setTaskSummaries(summaries);
 
     const totalQuantity = summaries.reduce((acc, task) => acc + task.actualQuantity, 0);
@@ -341,11 +348,11 @@ function App() {
         project: row.Project,
         quantity: row.Quantity,
         task: row.Task,
-        timeSpent
+        timeSpent,
+        employee: row.Employee
       }
     });
 
-    console.log("preprocessedData:", preprocessedData);
     // populate rowData: ITask[]
     const tasks: ITask[] = preprocessedData.reduce((
       acc: ITask[],
@@ -507,7 +514,7 @@ function App() {
         </div>
       </details>
 
-      {/* Task Table  */}
+      {/* Timesheet Records Table  */}
       <details className="mt-8">
         <summary className="text-left">All Timesheet Records</summary>
         <div>
@@ -523,6 +530,7 @@ function App() {
                   <TableHead className="text-center">Description</TableHead>
                   <TableHead className="text-center w-24">Actual</TableHead>
                   <TableHead className="text-center w-32">Date</TableHead>
+                  <TableHead className="text-center w-32">Employee</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -536,6 +544,7 @@ function App() {
                     <TableCell className="text-center">{task.description}</TableCell>
                     <TableCell className="text-center w-24">{task.timeSpent}</TableCell>
                     <TableCell className="text-center w-32">{task.formattedDate}</TableCell>
+                    <TableCell className="text-center w-32">{task.employee}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
